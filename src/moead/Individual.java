@@ -8,11 +8,19 @@ package moead;
  */
 public abstract class Individual implements Cloneable {
 	/**
+	 * Randomly generates a new individual.
 	 *
-	 * @return
+	 * @return new individual
 	 */
 	public abstract Individual generateIndividual();
+
+	/**
+	 * Returns the objective values for this individual.
+	 *
+	 * @return array of objective values
+	 */
 	public abstract double[] getObjectiveValues();
+
 	@Override
 	/**
 	 * {@inheritDoc}

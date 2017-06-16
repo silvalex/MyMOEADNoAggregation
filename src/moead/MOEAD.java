@@ -1,6 +1,5 @@
 package moead;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -31,8 +30,9 @@ public class MOEAD {
 	public static final CrossoverOperator crossOperator = new IndirectCrossoverOperator();
 
 	private Individual[] population = new Individual[popSize];
+	private List<Individual> paretoFront;
 	private double[][] weights = new double[popSize][numObjectives];
-	private int[][] neighbourhood = new int[popSize][];
+	private int[][] neighbourhood = new int[popSize][numNeighbours];
 	private Random random;
 
 	public MOEAD() {
@@ -44,21 +44,17 @@ public class MOEAD {
 			Individual[] newGeneration = new Individual[popSize];
 			System.arraycopy(population, 0, newGeneration, 0, popSize);
 
-
 			// Evolve new individuals for each problem
 			for (int i = 0; i < popSize; i++) {
 				Individual newInd = evolveNewIndividual(population[i], i, random);
 				// Update neighbours
-				updateNeighbours(newInd, i);
-				// Update external population, removing dominated vectors and adding new vector if it is not dominated itself
-				updateExternalPopulation();
+				updateNeighbours(newInd, i, newGeneration);
 			}
-
-			// Update of EP
-
-			// Copy the next generation over
-
+			// Copy the next generation over as the new population
+			population = newGeneration;
 		}
+		// Produce final Pareto front
+		paretoFront = produceParetoFront(population);
 	}
 
 	/**
@@ -161,7 +157,7 @@ public class MOEAD {
 			indexDistancePairs.add(new IndexDistancePair(i, distances[i]));
 		}
 		// Sort the pairs according to the distance, from lowest to highest.
-		Collections.sort((LinkedList) indexDistancePairs);
+		Collections.sort((LinkedList<IndexDistancePair>) indexDistancePairs);
 
 		// Get the indices for the required number of neighbours
 		int[] neighbours = new int[numNeighbours];
@@ -195,7 +191,6 @@ public class MOEAD {
 		// Perform crossover if that is the chosen operation
 		if (performCrossover) {
 			// Select a neighbour at random
-			int[] neighbourIndices = neighbourhood[index];
 			int neighbourIndex = random.nextInt(numNeighbours);
 			Individual neighbour = population[neighbourIndex];
 			return crossOperator.doCrossover(original.clone(), neighbour.clone(), random);
@@ -214,7 +209,7 @@ public class MOEAD {
 	 * @param newInd
 	 * @param index
 	 */
-	private void updateNeighbours(Individual newInd, int index) {
+	private void updateNeighbours(Individual newInd, int index, Individual[] newGeneration) {
 		// Retrieve neighbourhood indices
 		int[] neighbourhoodIndices = neighbourhood[index];
 		double newScore = calculateScore(newInd, index);
@@ -223,8 +218,8 @@ public class MOEAD {
 			// Calculate scores for the old solution, versus the new solution
 			oldScore = calculateScore(population[nIdx], index);
 			if (newScore < oldScore) {
-				// Replace neighbour with new solution
-				population[nIdx] = newInd;
+				// Replace neighbour with new solution in new generation
+				newGeneration[nIdx] = newInd;
 			}
 
 		}
@@ -236,7 +231,7 @@ public class MOEAD {
 	 *
 	 * @param ind
 	 * @param problemIndex - for retrieving weights
-	 * @return
+	 * @return score
 	 */
 	private double calculateScore(Individual ind, int problemIndex) {
 		double[] problemWeights = weights[problemIndex];
@@ -246,8 +241,16 @@ public class MOEAD {
 		return sum;
 	}
 
-	private void updateExternalPopulation() {
-		// TODO implement this
+	/**
+	 * Sorts the current population in order to identify the non-dominated
+	 * solutions (i.e. the Pareto front).
+	 *
+	 * @param population
+	 * @return Pareto front
+	 */
+	private List<Individual> produceParetoFront(Individual[] population) {
+		// TODO: implement this
+		return null;
 	}
 
 	/**
