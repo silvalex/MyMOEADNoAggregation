@@ -1,15 +1,32 @@
 package moead;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Set;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Text;
+import org.xml.sax.SAXException;
 
 import representation.IndirectCrossoverOperator;
 import representation.IndirectIndividual;
 import representation.IndirectMutationOperator;
+import wsc.Service;
+import wsc.TaxonomyNode;
 
 /**
  * The entry class for the program. The main algorithm is executed once MOEAD is instantiated.
@@ -17,6 +34,7 @@ import representation.IndirectMutationOperator;
  * @author sawczualex
  */
 public class MOEAD {
+	// Parameter settings
 	public static final int seed = 1;
 	public static final int generations = 51;
 	public static final int popSize = 500;
@@ -28,18 +46,38 @@ public class MOEAD {
 	public static final Individual indType = new IndirectIndividual();
 	public static final MutationOperator mutOperator = new IndirectMutationOperator();
 	public static final CrossoverOperator crossOperator = new IndirectCrossoverOperator();
+	public static final String outFileName = "out.stat";
+	public static final String frontFileName = "front.stat";
+	public static final String serviceRepository = "services-output.xml";
+	public static final String serviceTaxonomy = "taxonomy.xml";
+	public static final String serviceTask = "problem.xml";
 
+	// Internal state
 	private Individual[] population = new Individual[popSize];
-	private List<Individual> paretoFront;
 	private double[][] weights = new double[popSize][numObjectives];
 	private int[][] neighbourhood = new int[popSize][numNeighbours];
 	private Random random;
 
+	// Statistics
+	private double[] breedingTime = new double[generations];
+	private double[] evaluationTime = new double[generations];
+	FileWriter outWriter;
+	FileWriter frontWriter;
+
 	public MOEAD() {
+		int generation = 0;
+
 		// Initialise
+		long startTime = System.currentTimeMillis();
 		initialise();
+		breedingTime[generation] = System.currentTimeMillis() - startTime;
+
 		// While stopping criteria not met
 		while(!stopCrit.stoppingCriteriaMet()) {
+			// Write out stats
+			writeOutStatistics(outWriter, generation);
+
+			startTime = System.currentTimeMillis();
 			// Create an array to hold the new generation
 			Individual[] newGeneration = new Individual[popSize];
 			System.arraycopy(population, 0, newGeneration, 0, popSize);
@@ -52,15 +90,42 @@ public class MOEAD {
 			}
 			// Copy the next generation over as the new population
 			population = newGeneration;
+			generation++;
+
+			evaluationTime[generation] = System.currentTimeMillis() - startTime;
 		}
+
+
 		// Produce final Pareto front
-		paretoFront = produceParetoFront(population);
+		List<Individual> paretoFront = produceParetoFront(population);
+		// Write the front to disk
+		writeFrontStatistics(frontWriter, paretoFront);
+
+		// Close writers
+		try {
+			outWriter.close();
+			frontWriter.close();
+		}
+		catch (IOException e) {
+			System.err.println("Cannot close stat writers.");
+			e.printStackTrace();
+		}
+
 	}
 
 	/**
 	 * Creates weight vectors, calculates neighbourhoods, and generates an initial population.
 	 */
 	public void initialise() {
+		// Create stat writers
+		try {
+			outWriter = new FileWriter(new File(outFileName));
+			frontWriter = new FileWriter(new File(frontFileName));
+		}
+		catch (IOException e) {
+			System.err.println("Cannot create stat writers.");
+			e.printStackTrace();
+		}
 		// Ensure that mutation and crossover probabilities add up to 1
 		if (mutationProbability + crossoverProbability != 1.0)
 			throw new RuntimeException("The probabilities for mutation and crossover should add up to 1.");
@@ -249,8 +314,248 @@ public class MOEAD {
 	 * @return Pareto front
 	 */
 	private List<Individual> produceParetoFront(Individual[] population) {
+
 		// TODO: implement this
 		return null;
+	}
+
+	/**
+	 * Saves program statistics to the disk. This method should be called once per generation.
+	 *
+	 * @param writer - File writer for output.
+	 * @param generation - current generation number.
+	 */
+	private void writeOutStatistics(FileWriter writer, int generation) {
+		try {
+			for (Individual ind : population) {
+				// Generation
+				writer.append(String.format("%d ", generation));
+				// Breeding time
+				writer.append(String.format("%d ", breedingTime));
+				// Evaluation time
+				writer.append(String.format("%d ", evaluationTime));
+				// Rank and sparsity
+				writer.append("0 0 ");
+				// Objective one
+				writer.append(String.format("%f ", ind.getObjectiveValues()[0]));
+				// Objective two
+				writer.append(String.format("%f ", ind.getObjectiveValues()[1]));
+				// Raw availability
+				writer.append(String.format("%f ", ind.getAvailability()));
+				// Raw reliability
+				writer.append(String.format("%f ", ind.getReliability()));
+				// Raw time
+				writer.append(String.format("%f ", ind.getTime()));
+				// Raw cost
+				writer.append(String.format("%f\\n", ind.getCost()));
+			}
+		}
+		catch (IOException e) {
+			System.err.printf("Could not write to '%'.\n", outFileName);
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Saves the Pareto front to the disk. This method should be called at the end of the run.
+	 *
+	 * @param writer - File writer for front.
+	 * @param front - The list of individuals in the front.
+	 */
+	private void writeFrontStatistics(FileWriter writer, List<Individual> front) {
+		try {
+			for (Individual ind : front) {
+				// Rank and sparsity
+				writer.append("0 0 ");
+				// Objective one
+				writer.append(String.format("%f ", ind.getObjectiveValues()[0]));
+				// Objective two
+				writer.append(String.format("%f ", ind.getObjectiveValues()[1]));
+				// Raw availability
+				writer.append(String.format("%f ", ind.getAvailability()));
+				// Raw reliability
+				writer.append(String.format("%f ", ind.getReliability()));
+				// Raw time
+				writer.append(String.format("%f ", ind.getTime()));
+				// Raw cost
+				writer.append(String.format("%f ", ind.getCost()));
+				// Candidate string
+				writer.append(String.format("%s\\n", ind.toString()));
+			}
+		}
+		catch (IOException e) {
+			System.err.printf("Could not write to '%'.\n", outFileName);
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Parses the WSC Web service file with the given name, creating Web
+	 * services based on this information and saving them to the service map.
+	 *
+	 * @param fileName
+	 */
+	private void parseWSCServiceFile(String fileName) {
+        Set<String> inputs = new HashSet<String>();
+        Set<String> outputs = new HashSet<String>();
+        double[] qos = new double[4];
+
+        try {
+        	File fXmlFile = new File(fileName);
+        	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+        	Document doc = dBuilder.parse(fXmlFile);
+
+        	NodeList nList = doc.getElementsByTagName("service");
+
+        	for (int i = 0; i < nList.getLength(); i++) {
+        		org.w3c.dom.Node nNode = nList.item(i);
+        		Element eElement = (Element) nNode;
+
+        		String name = eElement.getAttribute("name");
+    		    qos[TIME] = Double.valueOf(eElement.getAttribute("Res"));
+    		    qos[COST] = Double.valueOf(eElement.getAttribute("Pri"));
+    		    qos[AVAILABILITY] = Double.valueOf(eElement.getAttribute("Ava"));
+    		    qos[RELIABILITY] = Double.valueOf(eElement.getAttribute("Rel"));
+
+				// Get inputs
+				org.w3c.dom.Node inputNode = eElement.getElementsByTagName("inputs").item(0);
+				NodeList inputNodes = ((Element)inputNode).getElementsByTagName("instance");
+				for (int j = 0; j < inputNodes.getLength(); j++) {
+					org.w3c.dom.Node in = inputNodes.item(j);
+					Element e = (Element) in;
+					inputs.add(e.getAttribute("name"));
+				}
+
+				// Get outputs
+				org.w3c.dom.Node outputNode = eElement.getElementsByTagName("outputs").item(0);
+				NodeList outputNodes = ((Element)outputNode).getElementsByTagName("instance");
+				for (int j = 0; j < outputNodes.getLength(); j++) {
+					org.w3c.dom.Node out = outputNodes.item(j);
+					Element e = (Element) out;
+					outputs.add(e.getAttribute("name"));
+				}
+
+                Service ws = new Service(name, qos, inputs, outputs);
+                serviceMap.put(name, ws);
+                inputs = new HashSet<String>();
+                outputs = new HashSet<String>();
+                qos = new double[4];
+        	}
+        }
+        catch(IOException ioe) {
+            System.out.println("Service file parsing failed...");
+        }
+        catch (ParserConfigurationException e) {
+            System.out.println("Service file parsing failed...");
+		}
+        catch (SAXException e) {
+            System.out.println("Service file parsing failed...");
+		}
+    }
+
+	/**
+	 * Parses the WSC task file with the given name, extracting input and
+	 * output values to be used as the composition task.
+	 *
+	 * @param fileName
+	 */
+	private void parseWSCTaskFile(String fileName) {
+		try {
+	    	File fXmlFile = new File(fileName);
+	    	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+	    	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+	    	Document doc = dBuilder.parse(fXmlFile);
+
+	    	org.w3c.dom.Node provided = doc.getElementsByTagName("provided").item(0);
+	    	NodeList providedList = ((Element) provided).getElementsByTagName("instance");
+	    	taskInput = new HashSet<String>();
+	    	for (int i = 0; i < providedList.getLength(); i++) {
+				org.w3c.dom.Node item = providedList.item(i);
+				Element e = (Element) item;
+				taskInput.add(e.getAttribute("name"));
+	    	}
+
+	    	org.w3c.dom.Node wanted = doc.getElementsByTagName("wanted").item(0);
+	    	NodeList wantedList = ((Element) wanted).getElementsByTagName("instance");
+	    	taskOutput = new HashSet<String>();
+	    	for (int i = 0; i < wantedList.getLength(); i++) {
+				org.w3c.dom.Node item = wantedList.item(i);
+				Element e = (Element) item;
+				taskOutput.add(e.getAttribute("name"));
+	    	}
+		}
+		catch (ParserConfigurationException e) {
+            System.out.println("Task file parsing failed...");
+            e.printStackTrace();
+		}
+		catch (SAXException e) {
+            System.out.println("Task file parsing failed...");
+            e.printStackTrace();
+		}
+		catch (IOException e) {
+            System.out.println("Task file parsing failed...");
+            e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Parses the WSC taxonomy file with the given name, building a
+	 * tree-like structure.
+	 *
+	 * @param fileName
+	 */
+	private void parseWSCTaxonomyFile(String fileName) {
+		try {
+	    	File fXmlFile = new File(fileName);
+	    	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+	    	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+	    	Document doc = dBuilder.parse(fXmlFile);
+	    	NodeList taxonomyRoots = doc.getChildNodes();
+
+	    	processTaxonomyChildren(null, taxonomyRoots);
+		}
+
+		catch (ParserConfigurationException e) {
+            System.err.println("Taxonomy file parsing failed...");
+		}
+		catch (SAXException e) {
+            System.err.println("Taxonomy file parsing failed...");
+		}
+		catch (IOException e) {
+            System.err.println("Taxonomy file parsing failed...");
+		}
+	}
+
+	/**
+	 * Recursive function for recreating taxonomy structure from file.
+	 *
+	 * @param parent - Nodes' parent
+	 * @param nodes
+	 */
+	private void processTaxonomyChildren(TaxonomyNode parent, NodeList nodes) {
+		if (nodes != null && nodes.getLength() != 0) {
+			for (int i = 0; i < nodes.getLength(); i++) {
+				org.w3c.dom.Node ch = nodes.item(i);
+
+				if (!(ch instanceof Text)) {
+					Element currNode = (Element) nodes.item(i);
+					String value = currNode.getAttribute("name");
+					TaxonomyNode taxNode = taxonomyMap.get( value );
+					if (taxNode == null) {
+					    taxNode = new TaxonomyNode(value);
+					    taxonomyMap.put( value, taxNode );
+					}
+					if (parent != null) {
+					    taxNode.parents.add(parent);
+						parent.children.add(taxNode);
+					}
+
+					NodeList children = currNode.getChildNodes();
+					processTaxonomyChildren(taxNode, children);
+				}
+			}
+		}
 	}
 
 	/**

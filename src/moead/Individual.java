@@ -21,9 +21,44 @@ public abstract class Individual implements Cloneable {
 	 */
 	public abstract double[] getObjectiveValues();
 
+	/**
+	 * Returns the overall availability (raw) for this individual.
+	 *
+	 * @return availability
+	 */
+	public abstract double getAvailability();
+
+	/**
+	 * Returns the overall reliability (raw) for this individual.
+	 *
+	 * @return reliability
+	 */
+	public abstract double getReliability();
+
+	/**
+	 * Returns the overall time (raw) for this individual.
+	 *
+	 * @return time
+	 */
+	public abstract double getTime();
+
+	/**
+	 * Returns the overall cost (raw) for this individual.
+	 *
+	 * @return cost
+	 */
+	public abstract double getCost();
+
 	@Override
 	/**
 	 * {@inheritDoc}
 	 */
 	public abstract Individual clone();
+
+	@Override
+	/**
+	 * {@inheritDoc}
+	 */
+	public abstract String toString();
+
 }
