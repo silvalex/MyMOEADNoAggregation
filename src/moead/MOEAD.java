@@ -25,8 +25,6 @@ import org.xml.sax.SAXException;
 import representation.IndirectCrossoverOperator;
 import representation.IndirectIndividual;
 import representation.IndirectMutationOperator;
-import wsc.Service;
-import wsc.TaxonomyNode;
 
 /**
  * The entry class for the program. The main algorithm is executed once MOEAD is instantiated.
@@ -51,6 +49,12 @@ public class MOEAD {
 	public static final String serviceRepository = "services-output.xml";
 	public static final String serviceTaxonomy = "taxonomy.xml";
 	public static final String serviceTask = "problem.xml";
+
+	// Constants
+	public static final int AVAILABILITY = 0;
+	public static final int RELIABILITY = 1;
+	public static final int TIME = 2;
+	public static final int COST = 3;
 
 	// Internal state
 	private Individual[] population = new Individual[popSize];
@@ -97,7 +101,7 @@ public class MOEAD {
 
 
 		// Produce final Pareto front
-		List<Individual> paretoFront = produceParetoFront(population);
+		Set<Individual> paretoFront = produceParetoFront(population);
 		// Write the front to disk
 		writeFrontStatistics(frontWriter, paretoFront);
 
@@ -313,10 +317,35 @@ public class MOEAD {
 	 * @param population
 	 * @return Pareto front
 	 */
-	private List<Individual> produceParetoFront(Individual[] population) {
+	private Set<Individual> produceParetoFront(Individual[] population) {
+		// Initialise sets/variable for tracking current front
+		Set<Individual> front = new HashSet<Individual>();
+		Set<Individual> toRemove = new HashSet<Individual>();
+		boolean dominated = false;
 
-		// TODO: implement this
-		return null;
+		for (Individual i: population) {
+			// Reset sets/variable
+			front.clear();
+			toRemove.clear();
+			dominated = false;
+
+			/* Go through front and check whether the current individual should be added to it. Also
+			 * check whether any individuals currently in the front should be removed (i.e. whether
+			 * they are dominated by the current individual).*/
+			for (Individual f: front) {
+				if (i.dominates(f)) {
+					toRemove.add(f);
+				}
+				else if (f.dominates(i)) {
+					dominated = true;
+				}
+			}
+			// Remove all dominated points from the Pareto set, and add current individual if not dominated
+			front.removeAll(toRemove);
+			if(!dominated)
+				front.add(i);
+		}
+		return front;
 	}
 
 	/**
@@ -360,9 +389,9 @@ public class MOEAD {
 	 * Saves the Pareto front to the disk. This method should be called at the end of the run.
 	 *
 	 * @param writer - File writer for front.
-	 * @param front - The list of individuals in the front.
+	 * @param front - The set of individuals in the front.
 	 */
-	private void writeFrontStatistics(FileWriter writer, List<Individual> front) {
+	private void writeFrontStatistics(FileWriter writer, Set<Individual> front) {
 		try {
 			for (Individual ind : front) {
 				// Rank and sparsity
