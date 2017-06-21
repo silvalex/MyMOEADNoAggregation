@@ -1,5 +1,8 @@
 package moead;
 
+import java.util.List;
+import java.util.Random;
+
 /**
  * Represents an individual in the population of solutions. A generation method for
  * the given individual must be implemented.
@@ -12,7 +15,7 @@ public abstract class Individual implements Cloneable {
 	 *
 	 * @return new individual
 	 */
-	public abstract Individual generateIndividual();
+	public abstract Individual generateIndividual(List<Service> relevantList, Random random);
 
 	/**
 	 * Returns the objective values for this individual.
@@ -20,6 +23,13 @@ public abstract class Individual implements Cloneable {
 	 * @return array of objective values
 	 */
 	public abstract double[] getObjectiveValues();
+
+	/**
+	 * Sets the array of objective values according to the argument passed.
+	 *
+	 * @param newObjectives
+	 */
+	public abstract void setObjectiveValues(double[] newObjectives);
 
 	/**
 	 * Returns the overall availability (raw) for this individual.
@@ -54,21 +64,21 @@ public abstract class Individual implements Cloneable {
 	 * {@inheritDoc}
 	 */
 	public abstract Individual clone();
-	
+
 	/**
 	 * Checks whether one individual dominates another (i.e. has equal and/or better
 	 * objective values than another, with at least one better value).
-	 * 
+	 *
 	 * @param other individual.
 	 * @return true if this individual dominates the other, false otherwise.
 	 */
 	public boolean dominates(Individual other) {
 		double[] thisObjValues = getObjectiveValues();
 		double[] otherObjValues = other.getObjectiveValues();
-		
+
 		boolean equivalent = true;
 		boolean higher = false;
-		
+
 		for (int i = 0; i < thisObjValues.length; i++) {
 			// Check if this individual has at least equivalent values for all objectives
 			if (thisObjValues[i] < otherObjValues[i]) {
@@ -78,7 +88,7 @@ public abstract class Individual implements Cloneable {
 			// Check if this individual has at least one higher value than the other objectives
 			if (thisObjValues[i] > otherObjValues[i]) {
 				higher = true;
-			}	
+			}
 		}
 		return equivalent && higher;
 	}

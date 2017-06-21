@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -72,8 +73,20 @@ public class MOEAD {
 	public Set<String> taskInput;
 	public Set<String> taskOutput;
 	public Service startServ;
+	public Set<Service> relevant;
+	public List<Service> relevantList;
 	public Service endServ;
 	private Random random;
+	public int numLayers;
+	// Normalisation bounds
+	public double minAvailability = 0.0;
+	public double maxAvailability = -1.0;
+	public double minReliability = 0.0;
+	public double maxReliability = -1.0;
+	public double minTime = Double.MAX_VALUE;
+	public double maxTime = -1.0;
+	public double minCost = Double.MAX_VALUE;
+	public double maxCost = -1.0;
 
 	// Statistics
 	private double[] breedingTime = new double[generations];
@@ -147,29 +160,7 @@ public class MOEAD {
 		parseWSCServiceFile(serviceRepository);
 		parseWSCTaskFile(serviceTask);
 		parseWSCTaxonomyFile(serviceTaxonomy);
-		
-		// TODO: continue from here
-		
-		// Ensure that mutation and crossover probabilities add up to 1
-		if (mutationProbability + crossoverProbability != 1.0)
-			throw new RuntimeException("The probabilities for mutation and crossover should add up to 1.");
-		// Initialise random number
-		random = new Random(seed);
-		// Create a set of uniformly spread weight vectors
-		initWeights();
-		// Identify the neighbouring weights for each vector
-		identifyNeighbourWeights();
-		// Generate an initial population
-		for (int i = 0; i < population.length; i++)
-			population[i] = indType.generateIndividual();
-	}
-	
-	private void setup() {
-		parseWSCServiceFile(state.parameters.getString(servicesParam, null));
-		parseWSCTaskFile(state.parameters.getString(taskParam, null));
-		parseWSCTaxonomyFile(state.parameters.getString(taxonomyParam, null));
-		evaluationsLogFile = state.parameters.getFile( evaluationsLogNameParam, null );
-		evalSampleRate = state.parameters.getInt(evalSampleRateParam, null);
+
 		findConceptsForInstances();
 
 		double[] mockQos = new double[4];
@@ -185,15 +176,21 @@ public class MOEAD {
 		populateTaxonomyTree();
 		relevant = getRelevantServices(serviceMap, taskInput, taskOutput);
 		relevantList = new ArrayList<Service>(relevant);
-		if (!dynamicNormalisation) {
-			calculateNormalisationBounds(relevant);
-			//calculateNormalisationBounds(new HashSet<Service>(serviceMap.values())); // XXX
-		}
 
-		// Set size of genome
-		Parameter genomeSizeParam = new Parameter("pop.subpop.0.species.genome-size");
-		state.parameters.set(genomeSizeParam, "" + relevant.size());
-		setupTime = System.currentTimeMillis() - startTime;
+		calculateNormalisationBounds(relevant);
+
+		// Ensure that mutation and crossover probabilities add up to 1
+		if (mutationProbability + crossoverProbability != 1.0)
+			throw new RuntimeException("The probabilities for mutation and crossover should add up to 1.");
+		// Initialise random number
+		random = new Random(seed);
+		// Create a set of uniformly spread weight vectors
+		initWeights();
+		// Identify the neighbouring weights for each vector
+		identifyNeighbourWeights();
+		// Generate an initial population
+		for (int i = 0; i < population.length; i++)
+			population[i] = indType.generateIndividual(relevantList, random);
 	}
 
 	/**
@@ -637,6 +634,233 @@ public class MOEAD {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Converts input, output, and service instance values to their corresponding
+	 * ontological parent.
+	 */
+	private void findConceptsForInstances() {
+		Set<String> temp = new HashSet<String>();
+
+		for (String s : taskInput)
+			temp.add(taxonomyMap.get(s).parents.get(0).value);
+		taskInput.clear();
+		taskInput.addAll(temp);
+
+		temp.clear();
+		for (String s : taskOutput)
+				temp.add(taxonomyMap.get(s).parents.get(0).value);
+		taskOutput.clear();
+		taskOutput.addAll(temp);
+
+		for (Service s : serviceMap.values()) {
+			temp.clear();
+			Set<String> inputs = s.getInputs();
+			for (String i : inputs)
+				temp.add(taxonomyMap.get(i).parents.get(0).value);
+			inputs.clear();
+			inputs.addAll(temp);
+
+			temp.clear();
+			Set<String> outputs = s.getOutputs();
+			for (String o : outputs)
+				temp.add(taxonomyMap.get(o).parents.get(0).value);
+			outputs.clear();
+			outputs.addAll(temp);
+		}
+	}
+
+	/**
+	 * Populates the taxonomy tree by associating services to the
+	 * nodes in the tree.
+	 */
+	private void populateTaxonomyTree() {
+		for (Service s: serviceMap.values()) {
+			addServiceToTaxonomyTree(s);
+		}
+	}
+
+	private void addServiceToTaxonomyTree(Service s) {
+		// Populate outputs
+	    Set<TaxonomyNode> seenConceptsOutput = new HashSet<TaxonomyNode>();
+		for (String outputVal : s.getOutputs()) {
+			TaxonomyNode n = taxonomyMap.get(outputVal);
+			s.getTaxonomyOutputs().add(n);
+
+			// Also add output to all parent nodes
+			Queue<TaxonomyNode> queue = new LinkedList<TaxonomyNode>();
+			queue.add( n );
+
+			while (!queue.isEmpty()) {
+			    TaxonomyNode current = queue.poll();
+		        seenConceptsOutput.add( current );
+		        current.servicesWithOutput.add(s);
+		        for (TaxonomyNode parent : current.parents) {
+		            if (!seenConceptsOutput.contains( parent )) {
+		                queue.add(parent);
+		                seenConceptsOutput.add(parent);
+		            }
+		        }
+			}
+		}
+		// Populate inputs
+		Set<TaxonomyNode> seenConceptsInput = new HashSet<TaxonomyNode>();
+		for (String inputVal : s.getInputs()) {
+			TaxonomyNode n = taxonomyMap.get(inputVal);
+
+			// Also add input to all children nodes
+			Queue<TaxonomyNode> queue = new LinkedList<TaxonomyNode>();
+			queue.add( n );
+
+			while(!queue.isEmpty()) {
+				TaxonomyNode current = queue.poll();
+				seenConceptsInput.add( current );
+
+			    Set<String> inputs = current.servicesWithInput.get(s);
+			    if (inputs == null) {
+			    	inputs = new HashSet<String>();
+			    	inputs.add(inputVal);
+			    	current.servicesWithInput.put(s, inputs);
+			    }
+			    else {
+			    	inputs.add(inputVal);
+			    }
+
+			    for (TaxonomyNode child : current.children) {
+			        if (!seenConceptsInput.contains( child )) {
+			            queue.add(child);
+			            seenConceptsInput.add( child );
+			        }
+			    }
+			}
+		}
+		return;
+	}
+
+	/**
+	 * Goes through the service list and retrieves only those services which
+	 * could be part of the composition task requested by the user.
+	 *
+	 * @param serviceMap
+	 * @return relevant services
+	 */
+	private Set<Service> getRelevantServices(Map<String,Service> serviceMap, Set<String> inputs, Set<String> outputs) {
+		// Copy service map values to retain original
+		Collection<Service> services = new ArrayList<Service>(serviceMap.values());
+
+		Set<String> cSearch = new HashSet<String>(inputs);
+		Set<Service> sSet = new HashSet<Service>();
+		int layer = 0;
+		Set<Service> sFound = discoverService(services, cSearch);
+		while (!sFound.isEmpty()) {
+			sSet.addAll(sFound);
+			// Record the layer that the services belong to in each node
+			for (Service s : sFound)
+				s.layer = layer;
+
+			layer++;
+			services.removeAll(sFound);
+			for (Service s: sFound) {
+				cSearch.addAll(s.getOutputs());
+			}
+			sFound.clear();
+			sFound = discoverService(services, cSearch);
+		}
+
+		numLayers = layer;
+
+		if (isSubsumed(outputs, cSearch)) {
+			return sSet;
+		}
+		else {
+			String message = "It is impossible to perform a composition using the services and settings provided.";
+			System.out.println(message);
+			System.exit(0);
+			return null;
+		}
+	}
+
+	/**
+	 * Discovers all services from the provided collection whose
+	 * input can be satisfied either (a) by the input provided in
+	 * searchSet or (b) by the output of services whose input is
+	 * satisfied by searchSet (or a combination of (a) and (b)).
+	 *
+	 * @param services
+	 * @param searchSet
+	 * @return set of discovered services
+	 */
+	private Set<Service> discoverService(Collection<Service> services, Set<String> searchSet) {
+		Set<Service> found = new HashSet<Service>();
+		for (Service s: services) {
+			if (isSubsumed(s.getInputs(), searchSet))
+				found.add(s);
+		}
+		return found;
+	}
+
+	/**
+	 * Checks whether set of inputs can be completely satisfied by the search
+	 * set, making sure to check descendants of input concepts for the subsumption.
+	 *
+	 * @param inputs
+	 * @param searchSet
+	 * @return true if search set subsumed by input set, false otherwise.
+	 */
+	public boolean isSubsumed(Set<String> inputs, Set<String> searchSet) {
+		boolean satisfied = true;
+		for (String input : inputs) {
+			Set<String> subsumed = taxonomyMap.get(input).getSubsumedConcepts();
+			if (!isIntersection( searchSet, subsumed )) {
+				satisfied = false;
+				break;
+			}
+		}
+		return satisfied;
+	}
+
+    private static boolean isIntersection( Set<String> a, Set<String> b ) {
+        for ( String v1 : a ) {
+            if ( b.contains( v1 ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+	private void calculateNormalisationBounds(Set<Service> services) {
+		for(Service service: services) {
+			double[] qos = service.getQos();
+
+			// Availability
+			double availability = qos[AVAILABILITY];
+			if (availability > maxAvailability)
+				maxAvailability = availability;
+
+			// Reliability
+			double reliability = qos[RELIABILITY];
+			if (reliability > maxReliability)
+				maxReliability = reliability;
+
+			// Time
+			double time = qos[TIME];
+			if (time > maxTime)
+				maxTime = time;
+			if (time < minTime)
+				minTime = time;
+
+			// Cost
+			double cost = qos[COST];
+			if (cost > maxCost)
+				maxCost = cost;
+			if (cost < minCost)
+				minCost = cost;
+		}
+		// Adjust max. cost and max. time based on the number of services in shrunk repository
+		maxCost *= services.size();
+		maxTime *= services.size();
+
 	}
 
 	/**
