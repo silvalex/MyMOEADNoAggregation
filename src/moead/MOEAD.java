@@ -5,9 +5,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
@@ -49,6 +51,11 @@ public class MOEAD {
 	public static final String serviceRepository = "services-output.xml";
 	public static final String serviceTaxonomy = "taxonomy.xml";
 	public static final String serviceTask = "problem.xml";
+	// Fitness weights
+	public static final double w1 = 0.25;
+	public static final double w2 = 0.25;
+	public static final double w3 = 0.25;
+	public static final double w4 = 0.25;
 
 	// Constants
 	public static final int AVAILABILITY = 0;
@@ -60,6 +67,12 @@ public class MOEAD {
 	private Individual[] population = new Individual[popSize];
 	private double[][] weights = new double[popSize][numObjectives];
 	private int[][] neighbourhood = new int[popSize][numNeighbours];
+	private Map<String, Service> serviceMap = new HashMap<String, Service>();
+	public Map<String, TaxonomyNode> taxonomyMap = new HashMap<String, TaxonomyNode>();
+	public Set<String> taskInput;
+	public Set<String> taskOutput;
+	public Service startServ;
+	public Service endServ;
 	private Random random;
 
 	// Statistics
@@ -130,6 +143,13 @@ public class MOEAD {
 			System.err.println("Cannot create stat writers.");
 			e.printStackTrace();
 		}
+		// Parse dataset files
+		parseWSCServiceFile(serviceRepository);
+		parseWSCTaskFile(serviceTask);
+		parseWSCTaxonomyFile(serviceTaxonomy);
+		
+		// TODO: continue from here
+		
 		// Ensure that mutation and crossover probabilities add up to 1
 		if (mutationProbability + crossoverProbability != 1.0)
 			throw new RuntimeException("The probabilities for mutation and crossover should add up to 1.");
@@ -142,6 +162,38 @@ public class MOEAD {
 		// Generate an initial population
 		for (int i = 0; i < population.length; i++)
 			population[i] = indType.generateIndividual();
+	}
+	
+	private void setup() {
+		parseWSCServiceFile(state.parameters.getString(servicesParam, null));
+		parseWSCTaskFile(state.parameters.getString(taskParam, null));
+		parseWSCTaxonomyFile(state.parameters.getString(taxonomyParam, null));
+		evaluationsLogFile = state.parameters.getFile( evaluationsLogNameParam, null );
+		evalSampleRate = state.parameters.getInt(evalSampleRateParam, null);
+		findConceptsForInstances();
+
+		double[] mockQos = new double[4];
+		mockQos[TIME] = 0;
+		mockQos[COST] = 0;
+		mockQos[AVAILABILITY] = 1;
+		mockQos[RELIABILITY] = 1;
+		Set<String> startOutput = new HashSet<String>();
+		startOutput.addAll(taskInput);
+		startServ = new Service("start", mockQos, new HashSet<String>(), taskInput);
+		endServ = new Service("end", mockQos, taskOutput ,new HashSet<String>());
+
+		populateTaxonomyTree();
+		relevant = getRelevantServices(serviceMap, taskInput, taskOutput);
+		relevantList = new ArrayList<Service>(relevant);
+		if (!dynamicNormalisation) {
+			calculateNormalisationBounds(relevant);
+			//calculateNormalisationBounds(new HashSet<Service>(serviceMap.values())); // XXX
+		}
+
+		// Set size of genome
+		Parameter genomeSizeParam = new Parameter("pop.subpop.0.species.genome-size");
+		state.parameters.set(genomeSizeParam, "" + relevant.size());
+		setupTime = System.currentTimeMillis() - startTime;
 	}
 
 	/**

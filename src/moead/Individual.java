@@ -54,6 +54,34 @@ public abstract class Individual implements Cloneable {
 	 * {@inheritDoc}
 	 */
 	public abstract Individual clone();
+	
+	/**
+	 * Checks whether one individual dominates another (i.e. has equal and/or better
+	 * objective values than another, with at least one better value).
+	 * 
+	 * @param other individual.
+	 * @return true if this individual dominates the other, false otherwise.
+	 */
+	public boolean dominates(Individual other) {
+		double[] thisObjValues = getObjectiveValues();
+		double[] otherObjValues = other.getObjectiveValues();
+		
+		boolean equivalent = true;
+		boolean higher = false;
+		
+		for (int i = 0; i < thisObjValues.length; i++) {
+			// Check if this individual has at least equivalent values for all objectives
+			if (thisObjValues[i] < otherObjValues[i]) {
+				equivalent = false;
+				break;
+			}
+			// Check if this individual has at least one higher value than the other objectives
+			if (thisObjValues[i] > otherObjValues[i]) {
+				higher = true;
+			}	
+		}
+		return equivalent && higher;
+	}
 
 	@Override
 	/**
