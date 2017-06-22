@@ -1,6 +1,7 @@
 package moead;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -76,7 +78,7 @@ public class MOEAD {
 	public Set<Service> relevant;
 	public List<Service> relevantList;
 	public Service endServ;
-	private Random random;
+	public Random random;
 	public int numLayers;
 	// Normalisation bounds
 	public double minAvailability = 0.0;
@@ -93,9 +95,66 @@ public class MOEAD {
 	private double[] evaluationTime = new double[generations];
 	FileWriter outWriter;
 	FileWriter frontWriter;
+	
+	private void parseParamsFile(String fileName) {
+		try {
+			Scanner scan = new Scanner(new File(fileName));
+			while (scan.hasNext()) {
+				String token = scan.next();
+				
+				public static final String outFileName = "out.stat";
+				public static final String frontFileName = "front.stat";
+				public static final String serviceRepository = "services-output.xml";
+				public static final String serviceTaxonomy = "taxonomy.xml";
+				public static final String serviceTask = "problem.xml";
+				// Fitness weights
+				public static final double w1 = 0.25;
+				public static final double w2 = 0.25;
+				public static final double w3 = 0.25;
+				public static final double w4 = 0.25;
+				
+				switch(token) {
+			         case "seed":
+			             break;
+			         case "generations":
+			        	 break;
+			         case "popSize":
+			        	 break;
+			         case "numObjectives":
+			             break;
+			         case "numNeighbours":
+			             break;
+			         case "crossoverProbability":
+			        	 break;
+			         case "mutationProbability":
+			             break;
+			         case "stopCrit":
+			        	 break;
+			         case "indType":
+			        	 break;
+			         case "mutOperator":
+			        	 break;
+			         case "crossOperator":
+			        	 break;
+			         case "outFileName":
+			        	 break;
+			         case "frontFile":
+			         default:
+			             throw new IllegalArgumentException("Invalid day of the week: " + dayOfWeekArg);
+				}
+			}
+			
+		} catch (FileNotFoundException e) {
+			System.err.println("Cannot read parameter file.");
+			e.printStackTrace();
+		}
+	}
 
-	public MOEAD() {
+	public MOEAD(String paramFileName) {
+		parseParamsFile(paramFileName);
+		
 		int generation = 0;
+		indType.setInit(this);
 
 		// Initialise
 		long startTime = System.currentTimeMillis();
@@ -190,7 +249,7 @@ public class MOEAD {
 		identifyNeighbourWeights();
 		// Generate an initial population
 		for (int i = 0; i < population.length; i++)
-			population[i] = indType.generateIndividual(relevantList, random);
+			population[i] = indType.generateIndividual();
 	}
 
 	/**
@@ -311,11 +370,11 @@ public class MOEAD {
 			// Select a neighbour at random
 			int neighbourIndex = random.nextInt(numNeighbours);
 			Individual neighbour = population[neighbourIndex];
-			return crossOperator.doCrossover(original.clone(), neighbour.clone(), random);
+			return crossOperator.doCrossover(original.clone(), neighbour.clone(), this);
 		}
 		// Else, perform mutation
 		else {
-			return mutOperator.mutate(original.clone(), random);
+			return mutOperator.mutate(original.clone(), this);
 		}
 	}
 
@@ -869,6 +928,6 @@ public class MOEAD {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		new MOEAD();
+		new MOEAD(args[1]);
 	}
 }

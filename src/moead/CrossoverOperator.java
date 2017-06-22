@@ -18,5 +18,5 @@ public abstract class CrossoverOperator {
 	 * @param rand
 	 * @return offspring
 	 */
-	public abstract Individual doCrossover(Individual ind1, Individual ind2, Random rand);
+	public abstract Individual doCrossover(Individual ind1, Individual ind2, MOEAD init);
 }

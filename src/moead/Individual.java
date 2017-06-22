@@ -1,8 +1,5 @@
 package moead;
 
-import java.util.List;
-import java.util.Random;
-
 /**
  * Represents an individual in the population of solutions. A generation method for
  * the given individual must be implemented.
@@ -15,7 +12,7 @@ public abstract class Individual implements Cloneable {
 	 *
 	 * @return new individual
 	 */
-	public abstract Individual generateIndividual(List<Service> relevantList, Random random);
+	public abstract Individual generateIndividual();
 
 	/**
 	 * Returns the objective values for this individual.
@@ -92,6 +89,18 @@ public abstract class Individual implements Cloneable {
 		}
 		return equivalent && higher;
 	}
+	
+	/**
+	 * Sets the associated init class to the individual, for accessing global values.
+	 * 
+	 * @param init
+	 */
+	public abstract void setInit(MOEAD init);
+	
+	/**
+	 * Calculates the overall QoS attributes, normalises them, and calculates objectives.
+	 */
+	public abstract void evaluate();
 
 	@Override
 	/**

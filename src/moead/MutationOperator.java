@@ -16,5 +16,5 @@ public abstract class MutationOperator {
 	 * @param rand - random object for stochastic operations
 	 * @return Mutated individual
 	 */
-	public abstract Individual mutate(Individual ind, Random rand);
+	public abstract Individual mutate(Individual ind, MOEAD init);
 }
