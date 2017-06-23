@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -38,27 +39,27 @@ import representation.IndirectMutationOperator;
  */
 public class MOEAD {
 	// Parameter settings
-	public static final int seed = 1;
-	public static final int generations = 51;
-	public static final int popSize = 500;
-	public static final int numObjectives = 2;
-	public static final int numNeighbours = 30;
-	public static final double crossoverProbability = 0.8;
-	public static final double mutationProbability = 0.2;
-	public static final StoppingCriteria stopCrit = new GenerationStoppingCriteria(generations);
-	public static final Individual indType = new IndirectIndividual();
-	public static final MutationOperator mutOperator = new IndirectMutationOperator();
-	public static final CrossoverOperator crossOperator = new IndirectCrossoverOperator();
-	public static final String outFileName = "out.stat";
-	public static final String frontFileName = "front.stat";
-	public static final String serviceRepository = "services-output.xml";
-	public static final String serviceTaxonomy = "taxonomy.xml";
-	public static final String serviceTask = "problem.xml";
+	public static long seed = 1;
+	public static int generations = 51;
+	public static int popSize = 500;
+	public static int numObjectives = 2;
+	public static int numNeighbours = 30;
+	public static double crossoverProbability = 0.8;
+	public static double mutationProbability = 0.2;
+	public static StoppingCriteria stopCrit = new GenerationStoppingCriteria(generations);
+	public static Individual indType = new IndirectIndividual();
+	public static MutationOperator mutOperator = new IndirectMutationOperator();
+	public static CrossoverOperator crossOperator = new IndirectCrossoverOperator();
+	public static String outFileName = "out.stat";
+	public static String frontFileName = "front.stat";
+	public static String serviceRepository = "services-output.xml";
+	public static String serviceTaxonomy = "taxonomy.xml";
+	public static String serviceTask = "problem.xml";
 	// Fitness weights
-	public static final double w1 = 0.25;
-	public static final double w2 = 0.25;
-	public static final double w3 = 0.25;
-	public static final double w4 = 0.25;
+	public static double w1 = 0.25;
+	public static double w2 = 0.25;
+	public static double w3 = 0.25;
+	public static double w4 = 0.25;
 
 	// Constants
 	public static final int AVAILABILITY = 0;
@@ -95,64 +96,113 @@ public class MOEAD {
 	private double[] evaluationTime = new double[generations];
 	FileWriter outWriter;
 	FileWriter frontWriter;
-	
+
+	/**
+	 * Loads and parses the parameter file.
+	 *
+	 * @param fileName
+	 */
 	private void parseParamsFile(String fileName) {
 		try {
 			Scanner scan = new Scanner(new File(fileName));
 			while (scan.hasNext()) {
-				String token = scan.next();
-				
-				public static final String outFileName = "out.stat";
-				public static final String frontFileName = "front.stat";
-				public static final String serviceRepository = "services-output.xml";
-				public static final String serviceTaxonomy = "taxonomy.xml";
-				public static final String serviceTask = "problem.xml";
-				// Fitness weights
-				public static final double w1 = 0.25;
-				public static final double w2 = 0.25;
-				public static final double w3 = 0.25;
-				public static final double w4 = 0.25;
-				
-				switch(token) {
-			         case "seed":
-			             break;
-			         case "generations":
-			        	 break;
-			         case "popSize":
-			        	 break;
-			         case "numObjectives":
-			             break;
-			         case "numNeighbours":
-			             break;
-			         case "crossoverProbability":
-			        	 break;
-			         case "mutationProbability":
-			             break;
-			         case "stopCrit":
-			        	 break;
-			         case "indType":
-			        	 break;
-			         case "mutOperator":
-			        	 break;
-			         case "crossOperator":
-			        	 break;
-			         case "outFileName":
-			        	 break;
-			         case "frontFile":
-			         default:
-			             throw new IllegalArgumentException("Invalid day of the week: " + dayOfWeekArg);
-				}
+				setParam(scan.next(), scan.next());
 			}
-			
-		} catch (FileNotFoundException e) {
+			scan.close();
+		}
+		catch (FileNotFoundException e) {
 			System.err.println("Cannot read parameter file.");
 			e.printStackTrace();
 		}
 	}
 
-	public MOEAD(String paramFileName) {
-		parseParamsFile(paramFileName);
-		
+	/**
+	 * Sets the next parameter from the file, checking against a list
+	 * of possibilities.
+	 *
+	 * @param scan
+	 */
+	private void setParam(String token, String param) {
+		try {
+			switch(token) {
+		        case "seed":
+		       	 seed = Long.valueOf(param);
+		            break;
+		        case "generations":
+		       	 generations = Integer.valueOf(param);
+		       	 break;
+		        case "popSize":
+		       	 popSize = Integer.valueOf(param);
+		       	 break;
+		        case "numObjectives":
+		       	 numObjectives = Integer.valueOf(param);
+		            break;
+		        case "numNeighbours":
+		       	 numNeighbours = Integer.valueOf(param);
+		            break;
+		        case "crossoverProbability":
+		       	 crossoverProbability = Double.valueOf(param);
+		       	 break;
+		        case "mutationProbability":
+		       	 mutationProbability = Double.valueOf(param);
+		            break;
+		        case "stopCrit":
+		       	 stopCrit = (StoppingCriteria) Class.forName(param).getConstructor(Integer.TYPE).newInstance(generations);
+		       	 break;
+		        case "indType":
+		       	 indType = (Individual) Class.forName(param).newInstance();
+		       	 break;
+		        case "mutOperator":
+		       	 mutOperator = (MutationOperator) Class.forName(param).newInstance();
+		       	 break;
+		        case "crossOperator":
+		       	 crossOperator = (CrossoverOperator) Class.forName(param).newInstance();
+		       	 break;
+		        case "outFileName":
+		       	 outFileName = param;
+		       	 break;
+		        case "frontFile":
+		       	 frontFileName = param;
+		       	 break;
+		        case "serviceRepository":
+		       	 serviceRepository = param;
+		       	 break;
+		        case "serviceTaxonomy":
+		       	 serviceTaxonomy = param;
+		       	 break;
+		        case "serviceTask":
+		       	 serviceTask = param;
+		       	 break;
+		        case "w1":
+		       	 w1 = Double.valueOf(param);
+		       	 break;
+		        case "w2":
+		       	 w2 = Double.valueOf(param);
+		       	 break;
+		        case "w3":
+		       	 w3 = Double.valueOf(param);
+		       	 break;
+		        case "w4":
+		       	 w4 = Double.valueOf(param);
+		       	 break;
+		        default:
+		            throw new IllegalArgumentException("Invalid parameter: " + token);
+			}
+		}
+		catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException | ClassNotFoundException e) {
+			System.err.println("Cannot parse parameter correctly: " + token);
+			e.printStackTrace();
+		}
+	}
+
+	public MOEAD(String[] args) {
+		parseParamsFile(args[0]);
+
+		// Read in any additional parameters
+		for (int i = 1; i < args.length; i +=2) {
+			setParam(args[i], args[i+1]);
+		}
+
 		int generation = 0;
 		indType.setInit(this);
 
@@ -928,6 +978,8 @@ public class MOEAD {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		new MOEAD(args[1]);
+		if (args.length == 0)
+			throw new RuntimeException("A parameters file should be provided as an argument.");
+		new MOEAD(args);
 	}
 }
