@@ -19,8 +19,10 @@ public class GenerationStoppingCriteria extends StoppingCriteria {
 	 *{@inheritDoc}
 	 */
 	public boolean stoppingCriteriaMet() {
-		if (currentGen++ < maxGenerations)
+		if (currentGen++ < maxGenerations) {
+			System.out.printf("Generation %d\n", currentGen);
 			return false;
+		}
 		else
 			return true;
 	}

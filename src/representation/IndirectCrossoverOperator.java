@@ -32,6 +32,10 @@ public class IndirectCrossoverOperator extends CrossoverOperator {
 		// Create new individuals
 		IndirectIndividual newInd1 = new IndirectIndividual();
 		IndirectIndividual newInd2 = new IndirectIndividual();
+		newInd1.setInit(init);
+		newInd2.setInit(init);
+		newInd1.createNewGenome();
+		newInd2.createNewGenome();
 
 		// Swap crossover sections between candidates, keeping track of which services are in each section
 		Set<Service> newSection1 = new HashSet<Service>();

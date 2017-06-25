@@ -29,6 +29,7 @@ public class IndirectIndividual extends Individual {
 		IndirectIndividual newInd = new IndirectIndividual();
 		newInd.genome = new Service[init.relevantList.size()];
 		init.relevantList.toArray(newInd.genome);
+		newInd.setInit(init);
 		
 		newInd.evaluate();
 		return newInd;
@@ -45,6 +46,7 @@ public class IndirectIndividual extends Individual {
 		newInd.reliability = reliability;
 		newInd.time = time;
 		newInd.cost = cost;
+		newInd.init = init;
 		newInd.objectives = new double[objectives.length];
 
 		System.arraycopy(objectives, 0, newInd.objectives, 0, objectives.length);
@@ -84,6 +86,10 @@ public class IndirectIndividual extends Individual {
 	
 	public Service[] getGenome() {
 		return genome;
+	}
+	
+	public void createNewGenome() {
+		genome = new Service[init.relevantList.size()];
 	}
 
 	@Override

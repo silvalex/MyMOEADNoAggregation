@@ -92,8 +92,8 @@ public class MOEAD {
 	public double maxCost = -1.0;
 
 	// Statistics
-	private double[] breedingTime = new double[generations];
-	private double[] evaluationTime = new double[generations];
+	private long[] breedingTime = new long[generations];
+	private long[] evaluationTime = new long[generations];
 	FileWriter outWriter;
 	FileWriter frontWriter;
 
@@ -161,7 +161,7 @@ public class MOEAD {
 		        case "outFileName":
 		       	 outFileName = param;
 		       	 break;
-		        case "frontFile":
+		        case "frontFileName":
 		       	 frontFileName = param;
 		       	 break;
 		        case "serviceRepository":
@@ -213,9 +213,6 @@ public class MOEAD {
 
 		// While stopping criteria not met
 		while(!stopCrit.stoppingCriteriaMet()) {
-			// Write out stats
-			writeOutStatistics(outWriter, generation);
-
 			startTime = System.currentTimeMillis();
 			// Create an array to hold the new generation
 			Individual[] newGeneration = new Individual[popSize];
@@ -229,9 +226,11 @@ public class MOEAD {
 			}
 			// Copy the next generation over as the new population
 			population = newGeneration;
+			long endTime = System.currentTimeMillis();
+			evaluationTime[generation] = endTime - startTime;
+			// Write out stats
+			writeOutStatistics(outWriter, generation);
 			generation++;
-
-			evaluationTime[generation] = System.currentTimeMillis() - startTime;
 		}
 
 
@@ -249,6 +248,8 @@ public class MOEAD {
 			System.err.println("Cannot close stat writers.");
 			e.printStackTrace();
 		}
+		
+		System.out.println("Done!");
 
 	}
 
@@ -483,7 +484,6 @@ public class MOEAD {
 
 		for (Individual i: population) {
 			// Reset sets/variable
-			front.clear();
 			toRemove.clear();
 			dominated = false;
 
@@ -518,23 +518,23 @@ public class MOEAD {
 				// Generation
 				writer.append(String.format("%d ", generation));
 				// Breeding time
-				writer.append(String.format("%d ", breedingTime));
+				writer.append(String.format("%d ", breedingTime[generation]));
 				// Evaluation time
-				writer.append(String.format("%d ", evaluationTime));
+				writer.append(String.format("%d ", evaluationTime[generation]));
 				// Rank and sparsity
 				writer.append("0 0 ");
 				// Objective one
-				writer.append(String.format("%f ", ind.getObjectiveValues()[0]));
+				writer.append(String.format("%.20f ", ind.getObjectiveValues()[0]));
 				// Objective two
-				writer.append(String.format("%f ", ind.getObjectiveValues()[1]));
+				writer.append(String.format("%.20f ", ind.getObjectiveValues()[1]));
 				// Raw availability
-				writer.append(String.format("%f ", ind.getAvailability()));
+				writer.append(String.format("%.30f ", ind.getAvailability()));
 				// Raw reliability
-				writer.append(String.format("%f ", ind.getReliability()));
+				writer.append(String.format("%.30f ", ind.getReliability()));
 				// Raw time
 				writer.append(String.format("%f ", ind.getTime()));
 				// Raw cost
-				writer.append(String.format("%f\\n", ind.getCost()));
+				writer.append(String.format("%f\n", ind.getCost()));
 			}
 		}
 		catch (IOException e) {
@@ -555,19 +555,19 @@ public class MOEAD {
 				// Rank and sparsity
 				writer.append("0 0 ");
 				// Objective one
-				writer.append(String.format("%f ", ind.getObjectiveValues()[0]));
+				writer.append(String.format("%.20f ", ind.getObjectiveValues()[0]));
 				// Objective two
-				writer.append(String.format("%f ", ind.getObjectiveValues()[1]));
+				writer.append(String.format("%.20f ", ind.getObjectiveValues()[1]));
 				// Raw availability
-				writer.append(String.format("%f ", ind.getAvailability()));
+				writer.append(String.format("%.30f ", ind.getAvailability()));
 				// Raw reliability
-				writer.append(String.format("%f ", ind.getReliability()));
+				writer.append(String.format("%.30f ", ind.getReliability()));
 				// Raw time
 				writer.append(String.format("%f ", ind.getTime()));
 				// Raw cost
 				writer.append(String.format("%f ", ind.getCost()));
 				// Candidate string
-				writer.append(String.format("%s\\n", ind.toString()));
+				writer.append(String.format("%s\n", ind.toString()));
 			}
 		}
 		catch (IOException e) {
