@@ -248,7 +248,7 @@ public class MOEAD {
 			System.err.println("Cannot close stat writers.");
 			e.printStackTrace();
 		}
-		
+
 		System.out.println("Done!");
 
 	}
@@ -259,8 +259,10 @@ public class MOEAD {
 	public void initialise() {
 		// Create stat writers
 		try {
-			outWriter = new FileWriter(new File(outFileName));
-			frontWriter = new FileWriter(new File(frontFileName));
+			File outFile = new File(outFileName);
+			File frontFile = new File(frontFileName);
+			outWriter = new FileWriter(outFile);
+			frontWriter = new FileWriter(frontFile);
 		}
 		catch (IOException e) {
 			System.err.println("Cannot create stat writers.");
@@ -514,9 +516,11 @@ public class MOEAD {
 	 */
 	private void writeOutStatistics(FileWriter writer, int generation) {
 		try {
-			for (Individual ind : population) {
+			for (int i = 0; i < population.length; i++) {
 				// Generation
 				writer.append(String.format("%d ", generation));
+				// Individual ID
+				writer.append(String.format("%d ", i));
 				// Breeding time
 				writer.append(String.format("%d ", breedingTime[generation]));
 				// Evaluation time
@@ -524,17 +528,17 @@ public class MOEAD {
 				// Rank and sparsity
 				writer.append("0 0 ");
 				// Objective one
-				writer.append(String.format("%.20f ", ind.getObjectiveValues()[0]));
+				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[0]));
 				// Objective two
-				writer.append(String.format("%.20f ", ind.getObjectiveValues()[1]));
+				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[1]));
 				// Raw availability
-				writer.append(String.format("%.30f ", ind.getAvailability()));
+				writer.append(String.format("%.30f ", population[i].getAvailability()));
 				// Raw reliability
-				writer.append(String.format("%.30f ", ind.getReliability()));
+				writer.append(String.format("%.30f ", population[i].getReliability()));
 				// Raw time
-				writer.append(String.format("%f ", ind.getTime()));
+				writer.append(String.format("%f ", population[i].getTime()));
 				// Raw cost
-				writer.append(String.format("%f\n", ind.getCost()));
+				writer.append(String.format("%f\n", population[i].getCost()));
 			}
 		}
 		catch (IOException e) {
@@ -567,7 +571,7 @@ public class MOEAD {
 				// Raw cost
 				writer.append(String.format("%f ", ind.getCost()));
 				// Candidate string
-				writer.append(String.format("%s\n", ind.toString()));
+				writer.append(String.format("\"%s\"\n", ind.toString()));
 			}
 		}
 		catch (IOException e) {
