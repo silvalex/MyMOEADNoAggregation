@@ -101,6 +101,11 @@ public abstract class Individual implements Cloneable {
 	 * Calculates the overall QoS attributes, normalises them, and calculates objectives.
 	 */
 	public abstract void evaluate();
+	
+	/**
+	 * Calculates the objective values for this individual.
+	 */
+	public abstract void finishCalculatingFitness();
 
 	@Override
 	/**

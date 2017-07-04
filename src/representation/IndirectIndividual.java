@@ -32,6 +32,8 @@ public class IndirectIndividual extends Individual {
 		newInd.setInit(init);
 		
 		newInd.evaluate();
+		if (MOEAD.dynamicNormalisation)
+			newInd.finishCalculatingFitness();
 		return newInd;
 	}
 
@@ -163,8 +165,14 @@ public class IndirectIndividual extends Individual {
 
         // Find the highest overall time
         time = findHighestTime(nextInputsToSatisfy);
-        objectives = calculateFitness(cost, time, availability, reliability);
+        if (!MOEAD.dynamicNormalisation)
+        	finishCalculatingFitness();
     }
+   
+   @Override
+   public void finishCalculatingFitness() {
+	   objectives = calculateFitness(cost, time, availability, reliability); 
+   }
 	   
 	public double findHighestTime(List<InputTimeLayerTrio> satisfied) {
 	    double max = Double.MIN_VALUE;
@@ -194,7 +202,6 @@ public class IndirectIndividual extends Individual {
 		if (init.maxAvailability - init.minAvailability == 0.0)
 			return 1.0;
 		else
-			//return (availability - init.minAvailability)/(init.maxAvailability - init.minAvailability);
 			return (init.maxAvailability - availability)/(init.maxAvailability - init.minAvailability);
 	}
 
@@ -202,7 +209,6 @@ public class IndirectIndividual extends Individual {
 		if (init.maxReliability- init.minReliability == 0.0)
 			return 1.0;
 		else
-			//return (reliability - init.minReliability)/(init.maxReliability - init.minReliability);
 			return (init.maxReliability - reliability)/(init.maxReliability - init.minReliability);
 	}
 
@@ -210,7 +216,6 @@ public class IndirectIndividual extends Individual {
 		if (init.maxTime - init.minTime == 0.0)
 			return 1.0;
 		else
-			//return (init.maxTime - time)/(init.maxTime - init.minTime);
 			return (time - init.minTime)/(init.maxTime - init.minTime);
 	}
 
@@ -218,7 +223,6 @@ public class IndirectIndividual extends Individual {
 		if (init.maxCost - init.minCost == 0.0)
 			return 1.0;
 		else
-			//return (init.maxCost - cost)/(init.maxCost - init.minCost);
 			return (cost - init.minCost)/(init.maxCost - init.minCost);
 	}
 

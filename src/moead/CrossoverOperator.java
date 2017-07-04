@@ -1,7 +1,5 @@
 package moead;
 
-import java.util.Random;
-
 /**
  * Represents an abstract crossover operator, to be implemented according to the
  * chosen representation.

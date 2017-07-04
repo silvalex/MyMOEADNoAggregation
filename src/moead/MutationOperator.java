@@ -1,7 +1,5 @@
 package moead;
 
-import java.util.Random;
-
 /**
  * Represents an abstract mutation operator, to be implemented according to the
  * chosen representation.

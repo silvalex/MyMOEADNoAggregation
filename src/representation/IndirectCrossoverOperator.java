@@ -58,6 +58,10 @@ public class IndirectCrossoverOperator extends CrossoverOperator {
 		// Evaluate the two children, and return the better one if there is a dominance
 		t1.evaluate();
 		t2.evaluate();
+		if (MOEAD.dynamicNormalisation) {
+			t1.finishCalculatingFitness();
+			t2.finishCalculatingFitness();
+		}
 		
 		if (t1.dominates(t2))
 			return t1;

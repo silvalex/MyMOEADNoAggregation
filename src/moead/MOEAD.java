@@ -58,6 +58,7 @@ public class MOEAD {
 	public static String serviceTaxonomy = "taxonomy.xml";
 	public static String serviceTask = "problem.xml";
 	public static boolean tchebycheff = true;
+	public static boolean dynamicNormalisation = false;
 	// Fitness weights
 	public static double w1 = 0.25;
 	public static double w2 = 0.25;
@@ -180,6 +181,9 @@ public class MOEAD {
 		        case "tchebycheff":
 		         tchebycheff = Boolean.valueOf(param);
 		         break;
+		        case "dynamicNormalisation":
+		         dynamicNormalisation = Boolean.valueOf(param);
+		         break;
 		        case "w1":
 		       	 w1 = Double.valueOf(param);
 		       	 break;
@@ -253,6 +257,9 @@ public class MOEAD {
 				if (tchebycheff)
 					updateReference(newInd);
 			}
+			// If using dynamic normalisation, finish evaluating the population
+			if (dynamicNormalisation)
+				finishEvaluating();
 			// Copy the next generation over as the new population
 			population = newGeneration;
 			long endTime = System.currentTimeMillis();
@@ -318,7 +325,8 @@ public class MOEAD {
 		relevant = getRelevantServices(serviceMap, taskInput, taskOutput);
 		relevantList = new ArrayList<Service>(relevant);
 
-		calculateNormalisationBounds(relevant);
+		if (!dynamicNormalisation)
+			calculateNormalisationBounds(relevant);
 
 		// Ensure that mutation and crossover probabilities add up to 1
 		if (mutationProbability + crossoverProbability != 1.0)
@@ -1062,6 +1070,70 @@ public class MOEAD {
 		maxCost *= services.size();
 		maxTime *= services.size();
 
+	}
+	
+	/**
+	 * This method finishes calculating the objective values for each individual
+	 * according to the QoS bounds found for this generation. If using dynamic
+	 * normalisation, bounds are updated in this process.
+	 * 
+	 * @param state
+	 * @param threadnum
+	 */
+	public void finishEvaluating() {
+		// Get population
+		double minA = 2.0;
+		double maxA = -1.0;
+		double minR = 2.0;
+		double maxR = -1.0;
+		double minT = Double.MAX_VALUE;
+		double maxT = -1.0;
+		double minC = Double.MAX_VALUE;
+		double maxC = -1.0;
+
+		// Find the normalisation bounds
+		for (Individual ind : population) {
+			double a = ind.getAvailability();
+			double r = ind.getReliability();
+			double t = ind.getTime();
+			double c = ind.getCost();
+
+			if (dynamicNormalisation) {
+				if (a < minA)
+					minA = a;
+				if (a > maxA)
+					maxA = a;
+				if (r < minR)
+					minR = r;
+				if (r > maxR)
+					maxR = r;
+				if (t < minT)
+					minT = t;
+				if (t > maxT)
+					maxT = t;
+				if (c < minC)
+					minC = c;
+				if (c > maxC)
+					maxC = c;
+			}
+		}
+
+		if (dynamicNormalisation) {
+			// Update the normalisation bounds with the newly found values
+			minAvailability = minA;
+			maxAvailability = maxA;
+			minReliability = minR;
+			maxReliability = maxR;
+			minCost = minC;
+			maxCost = maxC;
+			minTime = minT;
+			maxTime = maxT;
+
+			// Finish calculating the fitness of each candidate
+			for (Individual ind : population) {
+				ind.finishCalculatingFitness();
+			}
+		}
 	}
 
 	/**
