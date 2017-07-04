@@ -14,6 +14,7 @@ frontFileName front.stat
 serviceRepository services-output.xml
 serviceTaxonomy taxonomy.xml
 serviceTask problem.xml
+tchebycheff true
 w1 0.25
 w2 0.25
 w3 0.25

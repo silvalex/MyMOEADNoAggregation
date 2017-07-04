@@ -1,5 +1,7 @@
 package moead;
 
+import static java.lang.Math.abs;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -55,6 +57,7 @@ public class MOEAD {
 	public static String serviceRepository = "services-output.xml";
 	public static String serviceTaxonomy = "taxonomy.xml";
 	public static String serviceTask = "problem.xml";
+	public static boolean tchebycheff = true;
 	// Fitness weights
 	public static double w1 = 0.25;
 	public static double w2 = 0.25;
@@ -70,6 +73,7 @@ public class MOEAD {
 	// Internal state
 	private Individual[] population = new Individual[popSize];
 	private double[][] weights = new double[popSize][numObjectives];
+	private double idealPoint[];
 	private int[][] neighbourhood = new int[popSize][numNeighbours];
 	private Map<String, Service> serviceMap = new HashMap<String, Service>();
 	public Map<String, TaxonomyNode> taxonomyMap = new HashMap<String, TaxonomyNode>();
@@ -173,6 +177,9 @@ public class MOEAD {
 		        case "serviceTask":
 		       	 serviceTask = param;
 		       	 break;
+		        case "tchebycheff":
+		         tchebycheff = Boolean.valueOf(param);
+		         break;
 		        case "w1":
 		       	 w1 = Double.valueOf(param);
 		       	 break;
@@ -220,9 +227,31 @@ public class MOEAD {
 
 			// Evolve new individuals for each problem
 			for (int i = 0; i < popSize; i++) {
-				Individual newInd = evolveNewIndividual(population[i], i, random);
+				Individual oldInd = population[i];
+				Individual newInd = evolveNewIndividual(oldInd, i, random);
+
+				// Update individual itself
+				double oldScore;
+				if (tchebycheff)
+					oldScore = calculateTchebycheffScore(population[i], i);
+				else
+					oldScore = calculateScore(population[i], i);
+
+				double newScore;
+				if (tchebycheff)
+					newScore = calculateTchebycheffScore(newInd, i);
+				else
+					newScore= calculateScore(newInd, i);
+				if (newScore < oldScore) {
+					// Replace neighbour with new solution in new generation
+					newGeneration[i] = newInd;
+				}
+
 				// Update neighbours
 				updateNeighbours(newInd, i, newGeneration);
+				// Update reference points
+				if (tchebycheff)
+					updateReference(newInd);
 			}
 			// Copy the next generation over as the new population
 			population = newGeneration;
@@ -296,6 +325,9 @@ public class MOEAD {
 			throw new RuntimeException("The probabilities for mutation and crossover should add up to 1.");
 		// Initialise random number
 		random = new Random(seed);
+		// Initialise the reference point
+		if (tchebycheff)
+			initIdealPoint();
 		// Create a set of uniformly spread weight vectors
 		initWeights();
 		// Identify the neighbouring weights for each vector
@@ -332,6 +364,16 @@ public class MOEAD {
 			else {
 				throw new RuntimeException("Unsupported number of objectives. Should be 2 or 3.");
 			}
+		}
+	}
+
+	/**
+	 * Initialises the ideal point used for the Tchebycheff calculation.
+	 */
+	private void initIdealPoint() {
+		idealPoint = new double[numObjectives];
+		for (int i = 0; i < numObjectives; i++) {
+			idealPoint[i] = 0.0;
 		}
 	}
 
@@ -393,8 +435,9 @@ public class MOEAD {
 		int[] neighbours = new int[numNeighbours];
 
 		// Get the neighbours, excluding the vector itself
-		IndexDistancePair neighbourCandidate = indexDistancePairs.poll();
+		IndexDistancePair neighbourCandidate;
 		for (int i = 0; i < numNeighbours; i++) {
+			neighbourCandidate = indexDistancePairs.poll();
 			while (neighbourCandidate.getIndex() == currentIndex)
 				neighbourCandidate = indexDistancePairs.poll();
 			neighbours[i] = neighbourCandidate.getIndex();
@@ -442,14 +485,21 @@ public class MOEAD {
 	private void updateNeighbours(Individual newInd, int index, Individual[] newGeneration) {
 		// Retrieve neighbourhood indices
 		int[] neighbourhoodIndices = neighbourhood[index];
-		double newScore = calculateScore(newInd, index);
+		double newScore;
+		if (tchebycheff)
+			newScore = calculateTchebycheffScore(newInd, index);
+		else
+			newScore = calculateScore(newInd, index);
 		double oldScore;
 		for (int nIdx : neighbourhoodIndices) {
 			// Calculate scores for the old solution, versus the new solution
-			oldScore = calculateScore(population[nIdx], index);
+			if (tchebycheff)
+				oldScore = calculateTchebycheffScore(population[nIdx], index);
+			else
+				oldScore = calculateScore(population[nIdx], index);
 			if (newScore < oldScore) {
 				// Replace neighbour with new solution in new generation
-				newGeneration[nIdx] = newInd;
+				newGeneration[nIdx] = newInd.clone();
 			}
 
 		}
@@ -469,6 +519,44 @@ public class MOEAD {
 		for (int i = 0; i < numObjectives; i++)
 			sum += (problemWeights[i]) * ind.getObjectiveValues()[i];
 		return sum;
+	}
+
+	/**
+	 * Calculates the problem score using the Tchebycheff approach, and the given
+	 * set of weights.
+	 *
+	 * @param ind
+	 * @param problemIndex - for retrieving weights and ideal point
+	 * @return score
+	 */
+	private double calculateTchebycheffScore(Individual ind, int problemIndex) {
+		double[] problemWeights = weights[problemIndex];
+		double max_fun = -1 * Double.MAX_VALUE;
+
+		for (int i = 0; i < numObjectives; i++) {
+			double diff = abs(ind.getObjectiveValues()[i] - idealPoint[i]);
+			double feval;
+			if (problemWeights[i] == 0)
+				feval = 0.00001 * diff;
+			else
+				feval = problemWeights[i] * diff;
+			if (feval > max_fun)
+				max_fun = feval;
+		}
+		return max_fun;
+	}
+
+	/**
+	 * Updates the reference points if necessary, using the objective values
+	 * of the individual provided.
+	 *
+	 * @param ind
+	 */
+	protected void updateReference(Individual ind) {
+		for (int i = 0; i < numObjectives; i++) {
+			if (ind.getObjectiveValues()[i] < idealPoint[i])
+				idealPoint[i] = ind.getObjectiveValues()[i];
+		}
 	}
 
 	/**
