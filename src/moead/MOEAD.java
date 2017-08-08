@@ -628,7 +628,7 @@ public class MOEAD {
 				// Objective two
 				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[1]));
 				// Objective three
-				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[1]));
+				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[2]));
 				// Raw availability
 				writer.append(String.format("%.30f ", population[i].getAvailability()));
 				// Raw reliability
@@ -661,7 +661,7 @@ public class MOEAD {
 				// Objective two
 				writer.append(String.format("%.20f ", ind.getObjectiveValues()[1]));
 				// Objective three
-				writer.append(String.format("%.20f ", ind.getObjectiveValues()[1]));
+				writer.append(String.format("%.20f ", ind.getObjectiveValues()[2]));
 				// Raw availability
 				writer.append(String.format("%.30f ", ind.getAvailability()));
 				// Raw reliability
