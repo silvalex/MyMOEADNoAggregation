@@ -627,6 +627,8 @@ public class MOEAD {
 				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[0]));
 				// Objective two
 				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[1]));
+				// Objective three
+				writer.append(String.format("%.20f ", population[i].getObjectiveValues()[1]));
 				// Raw availability
 				writer.append(String.format("%.30f ", population[i].getAvailability()));
 				// Raw reliability
@@ -657,6 +659,8 @@ public class MOEAD {
 				// Objective one
 				writer.append(String.format("%.20f ", ind.getObjectiveValues()[0]));
 				// Objective two
+				writer.append(String.format("%.20f ", ind.getObjectiveValues()[1]));
+				// Objective three
 				writer.append(String.format("%.20f ", ind.getObjectiveValues()[1]));
 				// Raw availability
 				writer.append(String.format("%.30f ", ind.getAvailability()));
@@ -1071,12 +1075,12 @@ public class MOEAD {
 		maxTime *= services.size();
 
 	}
-	
+
 	/**
 	 * This method finishes calculating the objective values for each individual
 	 * according to the QoS bounds found for this generation. If using dynamic
 	 * normalisation, bounds are updated in this process.
-	 * 
+	 *
 	 * @param state
 	 * @param threadnum
 	 */

@@ -30,7 +30,7 @@ public class IndirectIndividual extends Individual {
 		newInd.genome = new Service[init.relevantList.size()];
 		init.relevantList.toArray(newInd.genome);
 		newInd.setInit(init);
-		
+
 		newInd.evaluate();
 		if (MOEAD.dynamicNormalisation)
 			newInd.finishCalculatingFitness();
@@ -85,11 +85,11 @@ public class IndirectIndividual extends Individual {
 	public double getCost() {
 		return cost;
 	}
-	
+
 	public Service[] getGenome() {
 		return genome;
 	}
-	
+
 	public void createNewGenome() {
 		genome = new Service[init.relevantList.size()];
 	}
@@ -104,7 +104,7 @@ public class IndirectIndividual extends Individual {
 	public void evaluate() {
 		calculateSequenceFitness(init.numLayers, init.endServ, genome);
 	}
-	
+
    public void calculateSequenceFitness(int numLayers, Service end, Service[] sequence) {
         Set<Service> solution = new HashSet<Service>();
 
@@ -168,12 +168,12 @@ public class IndirectIndividual extends Individual {
         if (!MOEAD.dynamicNormalisation)
         	finishCalculatingFitness();
     }
-   
+
    @Override
    public void finishCalculatingFitness() {
-	   objectives = calculateFitness(cost, time, availability, reliability); 
+	   objectives = calculateFitness(cost, time, availability, reliability);
    }
-	   
+
 	public double findHighestTime(List<InputTimeLayerTrio> satisfied) {
 	    double max = Double.MIN_VALUE;
 
@@ -184,20 +184,21 @@ public class IndirectIndividual extends Individual {
 
 	    return max;
 	}
-		
+
 	public double[] calculateFitness(double c, double t, double a, double r) {
         a = normaliseAvailability(a, init);
         r = normaliseReliability(r, init);
         t = normaliseTime(t, init);
         c = normaliseCost(c, init);
 
-        double[] objectives = new double[2];
-        objectives[0] = t + c;
-        objectives[1] = a + r;
+        double[] objectives = new double[3];
+        objectives[0] = t;
+        objectives[1] = c;
+        objectives[2] = a + r;
 
         return objectives;
 	}
-	
+
 	private double normaliseAvailability(double availability, MOEAD init) {
 		if (init.maxAvailability - init.minAvailability == 0.0)
 			return 1.0;
@@ -234,7 +235,7 @@ public class IndirectIndividual extends Individual {
         }
 	    return satisfied;
 	}
-	
+
 	public Graph createNewGraph(int numLayers, Service start, Service end, Service[] sequence) {
 		Node endNode = new Node(end);
 		Node startNode = new Node(start);
@@ -300,7 +301,7 @@ public class IndirectIndividual extends Individual {
 
         return graph;
     }
-	
+
 	public void createEdges(Node origin, List<InputNodeLayerTrio> destinations, Graph graph) {
 		// Order inputs by destination
 		Map<String, Set<String>> intersectMap = new HashMap<String, Set<String>>();
@@ -318,7 +319,7 @@ public class IndirectIndividual extends Individual {
         	graph.edgeList.add(e);
 		}
 	}
-	
+
 	private void addToIntersectMap(String destination, String input, Map<String, Set<String>> intersectMap) {
 		Set<String> intersect = intersectMap.get(destination);
 		if (intersect == null) {
@@ -327,7 +328,7 @@ public class IndirectIndividual extends Individual {
 		}
 		intersect.add(input);
 	}
-	
+
 	public List<InputNodeLayerTrio> getInputsSatisfiedGraphBuilding(List<InputNodeLayerTrio> inputsToSatisfy, Node n, MOEAD init) {
 	    List<InputNodeLayerTrio> satisfied = new ArrayList<InputNodeLayerTrio>();
 	    for(InputNodeLayerTrio p : inputsToSatisfy) {

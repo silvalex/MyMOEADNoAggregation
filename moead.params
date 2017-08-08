@@ -1,7 +1,7 @@
 seed 1
 generations 51
 popSize 500
-numObjectives 2
+numObjectives 3
 numNeighbours 30
 crossoverProbability 0.8
 mutationProbability 0.2
